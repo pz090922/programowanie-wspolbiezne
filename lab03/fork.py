@@ -7,24 +7,25 @@ def count_word_in_file(file_name, word):
         with open(file_name, 'r', encoding='utf-8') as file:
             text = file.read()
             total_word_count = text.lower().split().count(word.lower())
-            direcitves = input_directives = re.findall(r'\\input\{([^}]*)}', text)
+            direcitves = re.findall(r'\\input\{([^}]*)}', text)
 
-            for input_file in input_directives:
+            for input_file in direcitves:
                 pid = os.fork()
-
                 if pid == 0:
                     word_count = count_word_in_file(input_file, word)
                     sys.exit(word_count)
-                else:
-                    _, status = os.waitpid(pid, 0)
-                    word_count = os.WEXITSTATUS(status)
+            
+            for _ in direcitves: # idziemy w dół i na samym końcu tylko czekamy
+                if pid != 0:
+                    status = os.wait()
+                    word_count = os.WEXITSTATUS(status[1]) # Odczytuje kod wyjścia z zakończonego procesu
                     total_word_count += word_count
                 
             return total_word_count
-
     except FileNotFoundError:
         print(f"Plik '{file_name}' nie został znaleziony.")
         return 0
+
 
 
 
