@@ -1,6 +1,9 @@
 import os
 import errno
 import time
+import sys
+import signal
+
 database = {
     0: "Lewandowski",
     1: "Swoboda",
@@ -11,7 +14,6 @@ database = {
 }
 
 FIFO_PATH = 'kolejka'
-
 def create_fifo(fifo_path):
     try:
         os.mkfifo(fifo_path)
@@ -34,22 +36,34 @@ def request():
 
     os.close(fifo)
 
-    requests_array=[]
+    request_tuple=[]
     for request in requests_str.strip().split("\n"):
-        id, client = request.split(",")
-        requests_array.append(( int(id), client))
+        id, client_path = request.split(",")
+        request_tuple.append(( int(id), client_path))
 
-    return requests_array
+    return request_tuple
+
+def ignore_signal(signum, frame):
+    pass
+
+
+def handle_sigusr1(signum, frame):
+    os.remove(FIFO_PATH)
+    sys.exit(0)
+
 
 def main():
+    # print("PID:", os.getpid())
     while True:
         time.sleep(2)
         for id, client in request():
-            data = database.get(id, "Not found")
-
-            fifo = os.open(client, os.O_WRONLY)
-            os.write(fifo, f"{data}\n".encode())
-            os.close(fifo)
+            data = database.get(id, "Nie ma")
+            client_fifo = os.open(client, os.O_WRONLY)
+            os.write(client_fifo, f"{data}\n".encode())
+            os.close(client_fifo)
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGHUP, ignore_signal)
+    signal.signal(signal.SIGTERM, ignore_signal)
+    signal.signal(signal.SIGUSR1, handle_sigusr1)
     main()
